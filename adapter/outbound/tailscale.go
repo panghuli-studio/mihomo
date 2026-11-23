@@ -11,11 +11,13 @@ import (
 	"runtime"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/metacubex/mihomo/component/ca"
 	"github.com/metacubex/mihomo/component/dialer"
 	"github.com/metacubex/mihomo/component/iface/anet"
+	"github.com/metacubex/mihomo/component/proxydialer"
 	"github.com/metacubex/mihomo/component/resolver"
 	C "github.com/metacubex/mihomo/constant"
 	"github.com/metacubex/mihomo/dns"
@@ -41,6 +43,7 @@ type Tailscale struct {
 	cancel      context.CancelFunc
 	startOnce   sync.Once
 	startErr    error
+	startTried  atomic.Bool
 
 	backendInitOnce sync.Once
 	backendInitCh   chan struct{}
@@ -184,7 +187,16 @@ func NewTailscale(option TailscaleOption) (*Tailscale, error) {
 }
 
 func (t *Tailscale) start() error {
+	// tsnet binds its UDP sockets once, during Start, and a failed Start is final. Starting
+	// while dialer-proxy has nothing behind it would either leave those sockets on a direct
+	// path for good or break this outbound until reload, so wait until it can be used.
+	if !t.startTried.Load() {
+		if err := proxydialer.Ready(t.dialer); err != nil {
+			return fmt.Errorf("[Tailscale](%s) not started: %w", t.Name(), err)
+		}
+	}
 	t.startOnce.Do(func() {
+		t.startTried.Store(true)
 		if err := t.server.Start(); err != nil {
 			t.startErr = err
 			t.setBackendInitialized(err)
