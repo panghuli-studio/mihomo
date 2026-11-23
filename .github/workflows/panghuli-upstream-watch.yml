@@ -1,0 +1,115 @@
+# Daily check of upstream MetaCubeX/mihomo. When the tracked branch has commits that
+# `dev` lacks, open (or refresh) one issue describing them; a human decides whether to
+# merge. Only one such issue stays open: later runs edit it instead of opening another.
+name: panghuli upstream watch
+
+on:
+  schedule:
+    - cron: "17 1 * * *" # 09:17 Asia/Shanghai
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+env:
+  UPSTREAM_REPO: MetaCubeX/mihomo
+  # Releases are cut from Meta; Alpha is the daily development branch.
+  UPSTREAM_BRANCH: Meta
+  LABEL: upstream-update
+
+jobs:
+  watch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: dev
+          fetch-depth: 0
+      - name: Compare with upstream
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          up="upstream/${UPSTREAM_BRANCH}"
+          git remote add upstream "https://github.com/${UPSTREAM_REPO}.git"
+          git fetch --quiet --no-tags upstream "+refs/heads/${UPSTREAM_BRANCH}:refs/remotes/${up}"
+          git fetch --quiet upstream "+refs/tags/*:refs/tags/*"
+
+          head=$(git rev-parse "$up")
+          count=$(git rev-list --count "HEAD..${up}")
+          if [ "$count" -eq 0 ]; then
+            echo "dev already contains ${up} (${head})"
+            exit 0
+          fi
+
+          existing=$(gh issue list --state open --label "$LABEL" --json number,body --jq '.[0] // empty')
+          if [ -n "$existing" ] && grep -q "upstream-head: ${head}" <<<"$existing"; then
+            echo "Issue already describes ${head}"
+            exit 0
+          fi
+
+          base=$(git merge-base HEAD "$up")
+          tags=$(git tag --merged "$up" --no-merged HEAD --sort=-creatordate | grep -v -- '-panghuli\.' || true)
+
+          git -c user.name=ci -c user.email=ci@localhost merge --no-commit --no-ff "$up" >/dev/null 2>&1 || true
+          conflicts=$(git diff --name-only --diff-filter=U)
+          git merge --abort >/dev/null 2>&1 || git reset --hard --quiet HEAD
+
+          ours=$(git log --no-merges --format='- `%h` %s' "${up}..HEAD")
+          ours_files=$(git diff --name-only "${base}..HEAD")
+          their_files=$(git diff --name-only "${base}..${up}")
+          overlap=$(comm -12 <(sort <<<"$ours_files") <(sort <<<"$their_files") || true)
+
+          {
+            echo "上游 \`${UPSTREAM_REPO}@${UPSTREAM_BRANCH}\` 有 **${count}** 个提交还没进 \`dev\`。"
+            echo
+            echo "- 上游最新：[\`${head:0:9}\`](https://github.com/${UPSTREAM_REPO}/commit/${head})"
+            echo "- 完整对比：https://github.com/${UPSTREAM_REPO}/compare/${base}...${head}"
+            echo "- 改动规模：$(git diff --shortstat "${base}..${up}")"
+            echo
+            echo "## 新的上游版本标签"
+            echo
+            if [ -n "$tags" ]; then sed 's/^/- /' <<<"$tags"; else echo "无"; fi
+            echo
+            echo "## 合并预检"
+            echo
+            if [ -n "$conflicts" ]; then
+              echo "试合并 **有冲突**："
+              echo
+              sed 's/^/- `/; s/$/`/' <<<"$conflicts"
+            else
+              echo "试合并无冲突。"
+            fi
+            echo
+            echo "上游也改动了我们改过的文件："
+            echo
+            if [ -n "$overlap" ]; then sed 's/^/- `/; s/$/`/' <<<"$overlap"; else echo "无"; fi
+            echo
+            echo "## 我们在 dev 上独有的提交"
+            echo
+            if [ -n "$ours" ]; then echo "$ours"; else echo "无"; fi
+            echo
+            echo "## 上游新提交"
+            echo
+            git log --no-merges --date=short \
+              --format="- [\`%h\`](https://github.com/${UPSTREAM_REPO}/commit/%H) %s（%an，%ad）" \
+              "HEAD..${up}" | head -150
+            if [ "$count" -gt 150 ]; then echo; echo "（只列前 150 个，其余见完整对比）"; fi
+            echo
+            echo "## 合并方式"
+            echo
+            echo '从 `dev` 切分支，`git merge upstream/'"${UPSTREAM_BRANCH}"'`，解决冲突后开 PR 回 `dev`。合并后 `dev` 的推送会自动发布新 release。'
+            echo
+            echo "<!-- upstream-head: ${head} -->"
+          } > body.md
+
+          gh label create "$LABEL" --color 0E8A16 --description "Upstream has commits not in dev" --force >/dev/null
+          title="上游更新：${UPSTREAM_BRANCH} 有 ${count} 个新提交（${head:0:9}）"
+          if [ -n "$existing" ]; then
+            number=$(jq -r .number <<<"$existing")
+            gh issue edit "$number" --title "$title" --body-file body.md
+            gh issue comment "$number" --body "上游前进到 \`${head:0:9}\`，正文已更新。"
+          else
+            gh issue create --title "$title" --label "$LABEL" --body-file body.md
+          fi

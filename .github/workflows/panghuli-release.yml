@@ -1,0 +1,100 @@
+# Builds our own mihomo release from `dev`. proxy's mihctl downloads these assets, so
+# the asset names must keep upstream's pattern: mihomo-<os>-<arch>[-compatible]-<tag>.gz
+name: panghuli release
+
+on:
+  push:
+    branches: [dev]
+    paths-ignore:
+      - "**.md"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/workflows/panghuli-upstream-watch.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: panghuli-release
+  cancel-in-progress: false
+
+jobs:
+  version:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+      previous: ${{ steps.tag.outputs.previous }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Tag = nearest upstream release + "-panghuli.N", e.g. v1.19.34-panghuli.1.
+      - id: tag
+        run: |
+          base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-panghuli.*')
+          last=$(git tag -l "${base}-panghuli.*" | sed 's/.*-panghuli\.//' | sort -n | tail -1)
+          echo "tag=${base}-panghuli.$(( ${last:-0} + 1 ))" >> "$GITHUB_OUTPUT"
+          if [ -n "$last" ]; then
+            echo "previous=${base}-panghuli.${last}" >> "$GITHUB_OUTPUT"
+          else
+            echo "previous=${base}" >> "$GITHUB_OUTPUT"
+          fi
+
+  build:
+    needs: version
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - { goos: darwin, goarch: arm64, asset: darwin-arm64 }
+          - { goos: darwin, goarch: amd64, goamd64: v1, asset: darwin-amd64-compatible }
+          - { goos: linux, goarch: amd64, goamd64: v1, asset: linux-amd64-compatible }
+          - { goos: linux, goarch: arm64, asset: linux-arm64 }
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          GOAMD64: ${{ matrix.goamd64 }}
+          CGO_ENABLED: "0"
+          TAG: ${{ needs.version.outputs.tag }}
+        run: |
+          go build -tags with_gvisor -trimpath \
+            -ldflags "-X github.com/metacubex/mihomo/constant.Version=${TAG} -X github.com/metacubex/mihomo/constant.BuildTime=$(date -u +%Y-%m-%dT%H:%M:%SZ) -w -s -buildid=" \
+            -o mihomo .
+          gzip -9 -c mihomo > "mihomo-${{ matrix.asset }}-${TAG}.gz"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mihomo-${{ matrix.asset }}
+          path: mihomo-*.gz
+
+  release:
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ needs.version.outputs.tag }}
+          PREVIOUS: ${{ needs.version.outputs.previous }}
+        run: |
+          (cd dist && sha256sum mihomo-*.gz > checksums.txt)
+          {
+            echo "Built from \`dev\` at ${GITHUB_SHA}."
+            echo
+            echo "Changes since ${PREVIOUS}:"
+            echo
+            git log --no-merges --format='- %s (%h)' "${PREVIOUS}..${GITHUB_SHA}"
+          } > notes.md
+          gh release create "$TAG" dist/* --target "$GITHUB_SHA" --title "$TAG" --notes-file notes.md
