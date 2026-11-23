@@ -28,9 +28,12 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-      # Tag = nearest upstream release + "-panghuli.N", e.g. v1.19.34-panghuli.1.
+      # Tag = nearest upstream release + "-panghuli.N", e.g. v1.19.34-panghuli.1; N restarts
+      # at 1 for each upstream release. The fork does not receive upstream's new tags, so
+      # fetch them first, otherwise a merged v1.19.35 would still be described as v1.19.34.
       - id: tag
         run: |
+          git fetch --quiet --no-recurse-submodules https://github.com/MetaCubeX/mihomo.git '+refs/tags/v*:refs/tags/v*'
           base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-panghuli.*')
           last=$(git tag -l "${base}-panghuli.*" | sed 's/.*-panghuli\.//' | sort -n | tail -1)
           echo "tag=${base}-panghuli.$(( ${last:-0} + 1 ))" >> "$GITHUB_OUTPUT"
