@@ -7,6 +7,10 @@ on:
   schedule:
     - cron: "17 1 * * *" # 09:17 Asia/Shanghai
   workflow_dispatch:
+    inputs:
+      branch:
+        description: "Upstream branch to compare (default Meta)"
+        required: false
 
 permissions:
   contents: read
@@ -15,7 +19,7 @@ permissions:
 env:
   UPSTREAM_REPO: MetaCubeX/mihomo
   # Releases are cut from Meta; Alpha is the daily development branch.
-  UPSTREAM_BRANCH: Meta
+  UPSTREAM_BRANCH: ${{ inputs.branch || 'Meta' }}
   LABEL: upstream-update
 
 jobs:
