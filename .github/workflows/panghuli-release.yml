@@ -53,6 +53,7 @@ jobs:
           - { goos: darwin, goarch: amd64, goamd64: v1, asset: darwin-amd64-compatible }
           - { goos: linux, goarch: amd64, goamd64: v1, asset: linux-amd64-compatible }
           - { goos: linux, goarch: arm64, asset: linux-arm64 }
+          - { goos: windows, goarch: amd64, goamd64: v1, asset: windows-amd64-compatible }
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
