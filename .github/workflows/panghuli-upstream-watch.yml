@@ -9,7 +9,7 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: "Upstream branch to compare (default Meta)"
+        description: "Upstream branch to compare (default Alpha)"
         required: false
 
 permissions:
@@ -18,8 +18,8 @@ permissions:
 
 env:
   UPSTREAM_REPO: MetaCubeX/mihomo
-  # Releases are cut from Meta; Alpha is the daily development branch.
-  UPSTREAM_BRANCH: ${{ inputs.branch || 'Meta' }}
+  # This fork currently follows Alpha; the package records its exact upstream revision.
+  UPSTREAM_BRANCH: ${{ inputs.branch || 'Alpha' }}
   LABEL: upstream-update
 
 jobs:
