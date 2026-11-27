@@ -32,6 +32,7 @@ jobs:
         run: |
           git fetch --quiet --no-recurse-submodules https://github.com/MetaCubeX/mihomo.git '+refs/tags/v*:refs/tags/v*'
           base=$(git describe --tags --abbrev=0 --match 'v[0-9]*' --exclude '*-panghuli.*')
+          upstream_base="$base"
           read -r branch upstream_sha < .github/panghuli/UPSTREAM
           git merge-base --is-ancestor "$upstream_sha" HEAD
           if [ "$branch" = Alpha ]; then base="${base}-alpha.${upstream_sha:0:7}"; fi
@@ -40,7 +41,7 @@ jobs:
           if [ -n "$last" ]; then
             echo "previous=${base}-panghuli.${last}" >> "$GITHUB_OUTPUT"
           else
-            echo "previous=${base}" >> "$GITHUB_OUTPUT"
+            echo "previous=${upstream_base}" >> "$GITHUB_OUTPUT"
           fi
 
   build:
