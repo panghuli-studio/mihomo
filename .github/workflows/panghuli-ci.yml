@@ -1,0 +1,42 @@
+name: panghuli CI
+on:
+  pull_request:
+    branches: [dev]
+permissions:
+  contents: read
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      SKIP_INTEROP_TEST: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Test affected packages
+        run: go test -tags with_gvisor ./component/proxydialer/... ./adapter/... ./config/... ./transport/gost/... ./transport/snell/... ./transport/xhttp/...
+      - name: Vet affected packages
+        run: go vet -tags with_gvisor ./component/proxydialer/... ./adapter/... ./config/...
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      matrix:
+        include:
+          - {goos: darwin, goarch: arm64}
+          - {goos: darwin, goarch: amd64}
+          - {goos: linux, goarch: arm64}
+          - {goos: linux, goarch: amd64}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: "0"
+        run: go build -tags with_gvisor -trimpath -o /tmp/mihomo .
