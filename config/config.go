@@ -40,6 +40,7 @@ import (
 	RP "github.com/metacubex/mihomo/rules/provider"
 	RW "github.com/metacubex/mihomo/rules/wrapper"
 	T "github.com/metacubex/mihomo/tunnel"
+	"github.com/metacubex/mihomo/tunnel/statistic"
 
 	"golang.org/x/exp/slices"
 )
@@ -212,6 +213,8 @@ type Config struct {
 	Tunnels       []LC.Tunnel
 	Sniffer       *sniffer.Config
 	TLS           *TLS
+
+	TrafficMetrics statistic.MetricsConfig
 }
 
 type RawCors struct {
@@ -362,6 +365,18 @@ type RawExperimental struct {
 	IP4PEnable       bool     `yaml:"dialer-ip4p-convert" json:"dialer-ip4p-convert"`
 }
 
+type RawTrafficMetrics struct {
+	Enable          bool                `yaml:"enable" json:"enable"`
+	NodeLabel       bool                `yaml:"node-label" json:"node-label"`
+	FlushInterval   int                 `yaml:"flush-interval" json:"flush-interval"`
+	ProviderSources []RawProviderSource `yaml:"provider-sources" json:"provider-sources"`
+}
+
+type RawProviderSource struct {
+	Prefix string `yaml:"prefix" json:"prefix"`
+	Source string `yaml:"source" json:"source"`
+}
+
 type RawProfile struct {
 	StoreSelected bool `yaml:"store-selected" json:"store-selected"`
 	StoreFakeIP   bool `yaml:"store-fake-ip" json:"store-fake-ip"`
@@ -471,6 +486,8 @@ type RawConfig struct {
 	TLS           RawTLS                    `yaml:"tls" json:"tls"`
 
 	ClashForAndroid RawClashForAndroid `yaml:"clash-for-android" json:"clash-for-android"`
+
+	TrafficMetrics RawTrafficMetrics `yaml:"traffic-metrics" json:"traffic-metrics"`
 }
 
 // Parse config
@@ -652,6 +669,11 @@ func ParseRawConfig(rawCfg *RawConfig) (*Config, error) {
 		return nil, err
 	}
 	config.Experimental = experimental
+
+	config.TrafficMetrics, err = parseTrafficMetrics(rawCfg)
+	if err != nil {
+		return nil, err
+	}
 
 	iptables, err := parseIPTables(rawCfg)
 	if err != nil {
@@ -839,6 +861,25 @@ func parseExperimental(cfg *RawConfig) (*Experimental, error) {
 		QUICGoDisableECN: cfg.Experimental.QUICGoDisableECN,
 		IP4PEnable:       cfg.Experimental.IP4PEnable,
 	}, nil
+}
+
+func parseTrafficMetrics(cfg *RawConfig) (statistic.MetricsConfig, error) {
+	raw := cfg.TrafficMetrics
+	if raw.FlushInterval < 0 {
+		return statistic.MetricsConfig{}, fmt.Errorf("traffic-metrics.flush-interval must not be negative")
+	}
+	mc := statistic.MetricsConfig{
+		Enable:        raw.Enable,
+		NodeLabel:     raw.NodeLabel,
+		FlushInterval: time.Duration(raw.FlushInterval) * time.Second,
+	}
+	for i, s := range raw.ProviderSources {
+		if s.Prefix == "" || s.Source == "" {
+			return statistic.MetricsConfig{}, fmt.Errorf("traffic-metrics.provider-sources[%d]: prefix and source are required", i)
+		}
+		mc.Sources = append(mc.Sources, statistic.SourcePrefix{Prefix: s.Prefix, Source: s.Source})
+	}
+	return mc, nil
 }
 
 func parseIPTables(cfg *RawConfig) (*IPTables, error) {

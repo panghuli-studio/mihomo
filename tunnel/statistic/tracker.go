@@ -3,6 +3,7 @@ package statistic
 import (
 	"io"
 	"net"
+	stdatomic "sync/atomic"
 	"time"
 
 	"github.com/metacubex/mihomo/common/atomic"
@@ -31,6 +32,10 @@ type TrackerInfo struct {
 	ProviderChain C.Chain      `json:"providerChains"`
 	Rule          string       `json:"rule"`
 	RulePayload   string       `json:"rulePayload"`
+
+	// bytes already counted in Metrics
+	reportedUp   stdatomic.Int64
+	reportedDown stdatomic.Int64
 }
 
 type tcpTracker struct {
