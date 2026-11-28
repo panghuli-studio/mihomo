@@ -149,3 +149,5 @@ require (
 
 // for https://github.com/golang/protobuf/issues/1704
 replace google.golang.org/protobuf => github.com/metacubex/protobuf-go v0.0.0-20260306035419-7ceee0674686
+
+replace github.com/metacubex/tailscale => github.com/panghuli-studio/tailscale v0.0.0-20261128161611-9150c33035ec
