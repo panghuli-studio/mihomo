@@ -125,6 +125,7 @@ func router(isDebug bool, secret string, dohServer string, cors Cors) *chi.Mux {
 		r.Get("/traffic", traffic)
 		r.Get("/memory", memory)
 		r.Get("/version", version)
+		r.Get("/metrics", trafficMetrics)
 		r.Mount("/configs", configRouter())
 		r.Mount("/proxies", proxyRouter())
 		r.Mount("/group", groupRouter())
@@ -567,6 +568,17 @@ func getLogs(w http.ResponseWriter, r *http.Request) {
 			break
 		}
 	}
+}
+
+func trafficMetrics(w http.ResponseWriter, r *http.Request) {
+	m := statistic.DefaultManager.Metrics()
+	if !m.Enabled() {
+		render.Status(r, http.StatusNotFound)
+		render.JSON(w, r, newError("traffic-metrics is disabled"))
+		return
+	}
+	w.Header().Set("Content-Type", "text/plain; version=0.0.4; charset=utf-8")
+	_, _ = m.WriteTo(w)
 }
 
 func version(w http.ResponseWriter, r *http.Request) {

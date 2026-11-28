@@ -20,6 +20,7 @@ func init() {
 		uploadTotal:   atomic.NewInt64(0),
 		downloadTotal: atomic.NewInt64(0),
 		pid:           int32(os.Getpid()),
+		metrics:       NewMetrics(),
 	}
 
 	go DefaultManager.handle()
@@ -35,6 +36,7 @@ type Manager struct {
 	downloadTotal atomic.Int64
 	pid           int32
 	memory        uint64
+	metrics       *Metrics
 }
 
 func (m *Manager) Join(c Tracker) {
@@ -42,7 +44,9 @@ func (m *Manager) Join(c Tracker) {
 }
 
 func (m *Manager) Leave(c Tracker) {
-	m.connections.Delete(c.ID())
+	if _, ok := m.connections.LoadAndDelete(c.ID()); ok && m.metrics != nil {
+		m.metrics.observe(c.Info())
+	}
 }
 
 func (m *Manager) Get(id string) (c Tracker) {

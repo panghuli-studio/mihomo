@@ -106,6 +106,18 @@ external-doh-server: /dns-query
 # keep-alive-interval: 15
 
 # routing-mark:6666 # 配置 fwmark 仅用于 Linux
+# 流量统计 Prometheus 指标，挂在 external-controller 的 /metrics，鉴权同 secret；默认关闭
+# 按 host × process × source × proxy_group × direction 累加字节；连接关闭时和每 flush-interval 秒记一次增量
+# Inner 连接（dialer-proxy 中转、拉订阅、健康检查）不计入主指标，单独记 mihomo_traffic_inner_bytes_total
+# 要按进程统计，find-process-mode 需为 always（strict 只在规则用到进程时才查）
+traffic-metrics:
+  enable: false
+  node-label: false # 节点名标签，节点多时序列会成倍增加
+  flush-interval: 15
+  provider-sources: # 节点名前缀 → source 标签，先匹配先用；未匹配用 provider 名，内置出站用其名字
+    - {prefix: "TAG ", source: tag}
+    - {prefix: "Jisu ", source: jisu}
+
 experimental:
   # Disable quic-go GSO support. This may result in reduced performance on Linux.
   # This is not recommended for most users.
