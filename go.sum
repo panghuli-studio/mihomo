@@ -173,6 +173,8 @@ github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141 h1:DK2l6m2Fc85H2Bhi
 github.com/metacubex/smux v0.0.0-20260105030934-d0c8756d3141/go.mod h1:/yI4OiGOSn0SURhZdJF3CbtPg3nwK700bG8TZLMBvAg=
 github.com/metacubex/ssh v0.1.0 h1:iGfr99qk/eMHzUnQ/0bTxXT8+8SWqLSHBWDHoAhngzw=
 github.com/metacubex/ssh v0.1.0/go.mod h1:NUtl0d+/f2cG9ECEpMM8iCVOpmggQlC13oLeDUONDlU=
+github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181 h1:hWsSSzuCHe+WvPV1zhoJ8gXTXbp/5nhpPKxtpqgIXu0=
+github.com/metacubex/tailscale v0.0.0-20260821153257-ff0ecd818181/go.mod h1:fMMYScJPYt8Ss3D4VhontA2uV2N9NPZbbXsPP6LgQeo=
 github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2 h1:nKyLVJEU4jsLVx+rdqbDUbEKTX/Sdu161AeVoZC9tlY=
 github.com/metacubex/tailscale-wireguard-go v0.0.0-20260725073821-e61ab99cede2/go.mod h1:W00EeoPdd2jbV3+ZUa0m2b7FdKx5B1LFsXvEpy7cToQ=
 github.com/metacubex/tfo-go v0.0.0-20261026151606-08d83ec08c84 h1:mWjqcMU28lJ1+J9lkk/INJ1TIJbYvtarrsYiLlmEo48=
@@ -204,8 +206,6 @@ github.com/openacid/must v0.1.3/go.mod h1:luPiXCuJlEo3UUFQngVQokV0MPGryeYvtCbQPs
 github.com/openacid/testkeys v0.1.6/go.mod h1:MfA7cACzBpbiwekivj8StqX0WIRmqlMsci1c37CA3Do=
 github.com/oschwald/maxminddb-golang v1.12.0 h1:9FnTOD0YOhP7DGxGsq4glzpGy5+w7pq50AS6wALUMYs=
 github.com/oschwald/maxminddb-golang v1.12.0/go.mod h1:q0Nob5lTCqyQ8WT6FYgS1L7PXKVVbgiymefNwIjPzgY=
-github.com/panghuli-studio/tailscale v0.0.0-20261128161611-9150c33035ec h1:WMWeD1LpQLPgf/VPmemMtc7F1wOyNqACUL3UoDlXL/Y=
-github.com/panghuli-studio/tailscale v0.0.0-20261128161611-9150c33035ec/go.mod h1:fMMYScJPYt8Ss3D4VhontA2uV2N9NPZbbXsPP6LgQeo=
 github.com/pierrec/lz4/v4 v4.1.14/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pierrec/lz4/v4 v4.1.27 h1:+PhzhWDrjRj89TH2sw43nE3+4+W8lSxIuQadEHZyjUk=
 github.com/pierrec/lz4/v4 v4.1.27/go.mod h1:EoQMVJgeeEOMsCqCzqFm2O0cJvljX2nGZjcRIPL34O4=
